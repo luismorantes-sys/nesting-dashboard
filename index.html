@@ -225,7 +225,7 @@ const BPO_CREDENTIALS = {
   'admin':          { password: 'Admin2026!',   workspace: null },
   'delta':          { password: 'Delta2026!',   workspace: 'BPO - DELTA' },
   'ttec':           { password: 'Ttec2026!',    workspace: 'BPO - TTEC' },
-  'call&call':       { password: 'Call2026!',    workspace: 'BPO - CALL&CALL' },
+  'callcall':       { password: 'Call2026!',    workspace: 'BPO - CALL&CALL' },
   'iterum':         { password: 'Iterum2026!',  workspace: 'BPO - ITERUM' },
   'teleperformance':{ password: 'Tele2026!',    workspace: 'BPO - TELEPERFORMANCE' },
   'payjoy':         { password: 'Payjoy2026!',  workspace: 'PE - PAYJOY' },
@@ -281,8 +281,10 @@ async function loadData() {
   document.getElementById('refresh-info').textContent = 'Cargando...';
 
   try {
-    // Fetch all rows using gviz with large limit
-    const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&tq=select%20*%20limit%2010000`;
+    // Use direct export with explicit range — bypasses all row limits
+    // Format: /export?format=csv&range=A:Z fetches ALL rows for given columns
+    const COLS = 'A:Y'; // 25 columns
+    const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&range=${COLS}`;
     const resp = await fetch(url);
     if (!resp.ok) throw new Error('HTTP ' + resp.status);
     const text = await resp.text();
