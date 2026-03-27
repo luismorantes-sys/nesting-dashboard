@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nesting Scorecard Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  :root {
+    --bg: #f5f4f0; --bg2: #ffffff; --bg3: #f0efe9;
+    --text: #1a1a18; --text2: #5f5e5a; --text3: #9a9890;
+    --border: rgba(0,0,0,0.1); --border2: rgba(0,0,0,0.18);
+    --green: #1d9e75; --green-bg: #eaf3de; --green-text: #3b6d11;
+    --yellow: #ba7517; --yellow-bg: #faeeda; --yellow-text: #854f0b;
+    --red: #e24b4a; --red-bg: #fcebeb; --red-text: #a32d2d;
+    --blue: #3266ad; --radius: 8px; --radius-lg: 12px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); font-size: 14px; }
+
+  .header { background: var(--bg2); border-bottom: 0.5px solid var(--border2); padding: 14px 24px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
+  .header-left { display: flex; align-items: center; gap: 12px; }
+  .logo { font-size: 18px; font-weight: 600; color: var(--text); }
+  .logo span { color: var(--blue); }
+  .badge { font-size: 11px; background: var(--bg3); border: 0.5px solid var(--border2); border-radius: 20px; padding: 3px 10px; color: var(--text2); }
+  .refresh-info { font-size: 11px; color: var(--text3); }
+
+  .topbar { padding: 14px 24px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; background: var(--bg2); border-bottom: 0.5px solid var(--border); }
+  select { font-size: 12px; padding: 5px 10px; border: 0.5px solid var(--border2); border-radius: var(--radius); background: var(--bg2); color: var(--text); cursor: pointer; outline: none; }
+  select:hover { border-color: var(--blue); }
+  .sep { color: var(--border2); margin: 0 4px; }
+  .week-range { font-size: 11px; color: var(--text3); padding: 5px 10px; background: var(--bg3); border-radius: var(--radius); border: 0.5px solid var(--border); }
+
+  .content { padding: 20px 24px; max-width: 1100px; margin: 0 auto; }
+  .section-label { font-size: 11px; font-weight: 500; color: var(--text3); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 8px; }
+
+  .metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; margin-bottom: 20px; }
+  .mc { background: var(--bg3); border-radius: var(--radius); padding: 12px 14px; }
+  .mc .lb { font-size: 11px; color: var(--text2); margin-bottom: 4px; }
+  .mc .vl { font-size: 22px; font-weight: 600; }
+  .mc .sb { font-size: 10px; color: var(--text3); margin-top: 2px; }
+
+  .charts2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 20px; }
+  .card { background: var(--bg2); border: 0.5px solid var(--border); border-radius: var(--radius-lg); padding: 14px 16px; }
+  .card h3 { font-size: 12px; font-weight: 500; color: var(--text2); margin-bottom: 10px; }
+
+  .bar-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; font-size: 11px; }
+  .bar-lbl { width: 150px; color: var(--text2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex-shrink: 0; }
+  .bar-track { flex: 1; height: 8px; background: var(--bg3); border-radius: 4px; overflow: hidden; }
+  .bar-fill { height: 8px; border-radius: 4px; }
+  .bar-cnt { min-width: 22px; text-align: right; color: var(--text3); }
+
+  table.at { width: 100%; border-collapse: collapse; font-size: 12px; }
+  table.at th { font-size: 10px; font-weight: 600; color: var(--text3); text-align: left; padding: 6px 8px; border-bottom: 0.5px solid var(--border2); text-transform: uppercase; letter-spacing: .05em; white-space: nowrap; }
+  table.at td { padding: 8px 8px; border-bottom: 0.5px solid var(--border); vertical-align: middle; }
+  table.at tr.dr:hover td { background: var(--bg3); cursor: pointer; }
+  table.at tr:last-child td { border-bottom: none; }
+
+  .pill { display: inline-block; font-size: 10px; padding: 2px 8px; border-radius: 10px; font-weight: 500; }
+  .pill.g { background: var(--green-bg); color: var(--green-text); }
+  .pill.y { background: var(--yellow-bg); color: var(--yellow-text); }
+  .pill.r { background: var(--red-bg); color: var(--red-text); }
+
+  .sbar { display: flex; align-items: center; gap: 6px; }
+  .sbar .bw { width: 55px; height: 6px; background: var(--bg3); border-radius: 3px; overflow: hidden; }
+  .sbar .bf { height: 6px; border-radius: 3px; }
+
+  .detail-inner { display: none; padding: 10px 12px; background: var(--bg3); font-size: 11px; color: var(--text2); line-height: 1.7; border-bottom: 0.5px solid var(--border); }
+  .detail-inner.open { display: block; }
+  .detail-inner strong { color: var(--text); }
+
+  .loading { text-align: center; padding: 60px 20px; color: var(--text2); }
+  .loading .spinner { width: 32px; height: 32px; border: 2px solid var(--border2); border-top-color: var(--blue); border-radius: 50%; animation: spin .8s linear infinite; margin: 0 auto 14px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .error-box { background: var(--red-bg); border: 0.5px solid var(--red); border-radius: var(--radius); padding: 14px 16px; color: var(--red-text); font-size: 12px; margin: 20px 0; }
+
+  @media (max-width: 640px) { .charts2 { grid-template-columns: 1fr; } .content { padding: 14px; } }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-left">
+    <div class="logo">PayJoy <span>QA</span></div>
+    <div class="badge">Nesting Scorecard</div>
+  </div>
+  <div class="refresh-info" id="refresh-info">Cargando datos...</div>
+</div>
+
+<div class="topbar">
+  <select id="fw" onchange="go()">
+    <option value="all">Todas las semanas</option>
+    <option>Week 1</option><option>Week 2</option><option>Week 3</option><option>Week 4</option>
+  </select>
+  <select id="fc" onchange="go()"><option value="all">Todos los países</option></select>
+  <select id="fb" onchange="go()"><option value="all">Todos los workspaces</option></select>
+  <span class="sep">|</span>
+  <span class="week-range" id="week-range-label">—</span>
+  <button onclick="loadData()" style="font-size:11px;padding:5px 10px;border:0.5px solid var(--border2);border-radius:var(--radius);background:var(--bg2);cursor:pointer;color:var(--text2)">↻ Actualizar</button>
+</div>
+
+<div class="content">
+  <div id="loading-box" class="loading">
+    <div class="spinner"></div>
+    <div>Conectando con Google Sheets...</div>
+  </div>
+  <div id="main" style="display:none">
+    <div class="section-label">Resumen</div>
+    <div class="metrics" id="metrics"></div>
+
+    <div class="charts2">
+      <div class="card"><h3>Score por semana (tendencia)</h3><div style="position:relative;height:160px"><canvas id="ch1"></canvas></div></div>
+      <div class="card"><h3>Score por workspace</h3><div style="position:relative;height:160px"><canvas id="ch2"></canvas></div></div>
+    </div>
+    <div class="charts2">
+      <div class="card"><h3>Categorías más afectadas</h3><div id="bcats"></div></div>
+      <div class="card"><h3>Causas raíz más frecuentes</h3><div id="brc"></div></div>
+    </div>
+
+    <div class="card" style="margin-bottom:20px">
+      <h3>Ranking de agentes <span style="font-size:10px;font-weight:400;color:var(--text3)">— clic en fila para ver detalle</span></h3>
+      <div style="overflow-x:auto">
+        <table class="at">
+          <thead><tr>
+            <th>#</th><th>Agente</th><th>Workspace</th><th>País</th>
+            <th>S1</th><th>S2</th><th>S3</th><th>S4</th>
+            <th>Promedio</th><th>Estado</th><th>Cat. principal</th>
+          </tr></thead>
+          <tbody id="tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const SHEET_ID = '1FfyrGBxfTKLdhDbaKaf5hffP0pFxQ4cULTxnY0L7kqU';
+const CSV_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&id=${SHEET_ID}`;
+
+let DATA = [], ch1 = null, ch2 = null;
+
+function avg(arr) { return arr.length ? +(arr.reduce((a,b)=>a+b,0)/arr.length).toFixed(1) : 0; }
+function sem(s) { return s >= 90 ? 'g' : s >= 75 ? 'y' : 'r'; }
+function semLbl(s) { return s >= 90 ? '≥90%' : s >= 75 ? '75–89%' : '<75%'; }
+
+function parseCSV(text) {
+  const lines = text.trim().split('\n');
+  const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, '').toUpperCase());
+  const rows = [];
+  for (let i = 1; i < lines.length; i++) {
+    const vals = smartSplit(lines[i]);
+    if (vals.length < 5) continue;
+    const o = {};
+    headers.forEach((h, j) => { o[h] = (vals[j] || '').trim().replace(/^"|"$/g, ''); });
+    rows.push(o);
+  }
+  return { headers, rows };
+}
+
+function smartSplit(line) {
+  const result = [];
+  let cur = '', inQ = false;
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i];
+    if (c === '"') { inQ = !inQ; }
+    else if (c === ',' && !inQ) { result.push(cur); cur = ''; }
+    else { cur += c; }
+  }
+  result.push(cur);
+  return result;
+}
+
+async function loadData() {
+  document.getElementById('loading-box').style.display = 'block';
+  document.getElementById('main').style.display = 'none';
+  document.getElementById('refresh-info').textContent = 'Cargando datos...';
+
+  try {
+    const resp = await fetch(CSV_URL);
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    const text = await resp.text();
+    const { rows } = parseCSV(text);
+
+    DATA = rows
+      .filter(r => r.SCORECARD_NAME && r.SCORECARD_NAME.toLowerCase().includes('nesting'))
+      .filter(r => r.AGENT_NAME && r.AGENT_NAME.trim() !== '' && r.AGENT_NAME.toLowerCase() !== 'bot')
+      .map(r => ({
+        a: r.AGENT_NAME || '',
+        w: r.WORKSPACE_NAME || '',
+        c: r.COUNTRY_NAME || '',
+        wk: r.WEEK_QA || '',
+        s: parseFloat(r.FINAL_REVIEW_SCORE || 0) * 100,
+        af: r.AFFECTED_CATEGORIES || '',
+        rc: r.ROOT_CAUSES || '',
+        cf: (r.HAD_CRITICAL_FAIL || '').toLowerCase() === 'true',
+        ws: (r.WEEK_START || '').substring(0, 10),
+        we: (r.WEEK_END || '').substring(0, 10),
+      }));
+
+    if (DATA.length === 0) throw new Error('No se encontraron filas con scorecard Nesting');
+
+    populateFilters();
+
+    const now = new Date().toLocaleString('es-MX', { dateStyle: 'medium', timeStyle: 'short' });
+    document.getElementById('refresh-info').textContent = `Actualizado: ${now} · ${DATA.length} evaluaciones`;
+
+    document.getElementById('loading-box').style.display = 'none';
+    document.getElementById('main').style.display = 'block';
+    go();
+
+  } catch (e) {
+    document.getElementById('loading-box').innerHTML = `
+      <div class="error-box">
+        <strong>Error al cargar datos</strong><br>${e.message}<br><br>
+        Verifica que el Google Sheet esté configurado como público (Anyone with the link → Viewer).<br><br>
+        <button onclick="loadData()" style="padding:6px 12px;border:0.5px solid var(--red);border-radius:var(--radius);background:white;cursor:pointer;color:var(--red-text)">Reintentar</button>
+      </div>`;
+  }
+}
+
+function populateFilters() {
+  const countries = [...new Set(DATA.map(x => x.c))].filter(Boolean).sort();
+  const workspaces = [...new Set(DATA.map(x => x.w))].filter(Boolean).sort();
+  const fc = document.getElementById('fc');
+  const fb = document.getElementById('fb');
+  fc.innerHTML = '<option value="all">Todos los países</option>';
+  fb.innerHTML = '<option value="all">Todos los workspaces</option>';
+  countries.forEach(c => { const o = document.createElement('option'); o.value = o.text = c; fc.appendChild(o); });
+  workspaces.forEach(w => { const o = document.createElement('option'); o.value = o.text = w; fb.appendChild(o); });
+}
+
+function filtered() {
+  const w = document.getElementById('fw').value;
+  const c = document.getElementById('fc').value;
+  const b = document.getElementById('fb').value;
+  return DATA.filter(d =>
+    (w === 'all' || d.wk === w) &&
+    (c === 'all' || d.c === c) &&
+    (b === 'all' || d.w === b)
+  );
+}
+
+function go() {
+  const r = filtered();
+  updateWeekLabel(r);
+  renderMetrics(r);
+  renderTrend(r);
+  renderWorkspace(r);
+  renderBars(r);
+  renderTable(r);
+}
+
+function updateWeekLabel(r) {
+  const wk = document.getElementById('fw').value;
+  if (wk === 'all') {
+    document.getElementById('week-range-label').textContent = 'Todas las semanas';
+    return;
+  }
+  const matching = r.filter(x => x.ws && x.we);
+  if (matching.length === 0) { document.getElementById('week-range-label').textContent = wk; return; }
+  const ws = matching[0].ws;
+  const we = matching[0].we;
+  const fmt = d => { const p = d.split('-'); return `${p[2]}/${p[1]}/${p[0].slice(2)}`; };
+  document.getElementById('week-range-label').textContent = `${wk}: ${fmt(ws)} – ${fmt(we)}`;
+}
+
+function renderMetrics(r) {
+  const scores = r.map(x => x.s);
+  const gen = avg(scores);
+  const cf = r.filter(x => x.cf).length;
+  const agents = new Set(r.map(x => x.a)).size;
+  const ws = new Set(r.map(x => x.w)).size;
+  const col = gen >= 90 ? 'var(--green)' : gen >= 75 ? 'var(--yellow)' : 'var(--red)';
+  document.getElementById('metrics').innerHTML = `
+    <div class="mc"><div class="lb">Score general</div><div class="vl" style="color:${col}">${gen.toFixed(1)}%</div><div class="sb">${r.length} evaluaciones</div></div>
+    <div class="mc"><div class="lb">Agentes</div><div class="vl">${agents}</div><div class="sb">en el filtro</div></div>
+    <div class="mc"><div class="lb">Critical fails</div><div class="vl" style="color:${cf > 0 ? 'var(--red)' : 'var(--green)'}">${cf}</div><div class="sb">tickets</div></div>
+    <div class="mc"><div class="lb">Workspaces</div><div class="vl">${ws}</div><div class="sb">&nbsp;</div></div>
+    <div class="mc"><div class="lb">Con oportunidad</div><div class="vl">${r.filter(x => x.af).length}</div><div class="sb">tickets afectados</div></div>
+  `;
+}
+
+function renderTrend(r) {
+  const wks = ['Week 1', 'Week 2', 'Week 3', 'Week 4'];
+  const vals = wks.map(w => { const a = r.filter(x => x.wk === w).map(x => x.s); return a.length ? +avg(a).toFixed(1) : null; });
+  const ctx = document.getElementById('ch1').getContext('2d');
+  if (ch1) ch1.destroy();
+  ch1 = new Chart(ctx, {
+    type: 'line',
+    data: { labels: ['S1', 'S2', 'S3', 'S4'], datasets: [{ data: vals, borderColor: '#3266ad', backgroundColor: 'rgba(50,102,173,.1)', tension: .35, fill: true, pointBackgroundColor: '#3266ad', borderWidth: 2, pointRadius: 4, spanGaps: true }] },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { min: 0, max: 100, ticks: { font: { size: 10 }, color: '#888', callback: v => v + '%' }, grid: { color: 'rgba(0,0,0,.05)' } }, x: { ticks: { font: { size: 10 }, color: '#888' }, grid: { display: false } } } }
+  });
+}
+
+function renderWorkspace(r) {
+  const grp = {};
+  r.forEach(x => { if (!grp[x.w]) grp[x.w] = []; grp[x.w].push(x.s); });
+  const lbls = Object.keys(grp);
+  const vals = lbls.map(k => +avg(grp[k]).toFixed(1));
+  const cols = vals.map(v => v >= 90 ? '#1d9e75' : v >= 75 ? '#ba7517' : '#e24b4a');
+  const ctx = document.getElementById('ch2').getContext('2d');
+  if (ch2) ch2.destroy();
+  ch2 = new Chart(ctx, {
+    type: 'bar',
+    data: { labels: lbls.map(l => l.replace('BPO - ', '')), datasets: [{ data: vals, backgroundColor: cols, borderRadius: 4, borderSkipped: false }] },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { min: 0, max: 100, ticks: { font: { size: 10 }, color: '#888', callback: v => v + '%' }, grid: { color: 'rgba(0,0,0,.05)' } }, x: { ticks: { font: { size: 10 }, color: '#888', maxRotation: 20 }, grid: { display: false } } } }
+  });
+}
+
+function renderBars(r) {
+  const cats = {}, rcs = {};
+  r.forEach(x => {
+    if (x.af) x.af.split(',').forEach(c => { c = c.trim(); if (c) cats[c] = (cats[c] || 0) + 1; });
+    if (x.rc) x.rc.split(',').forEach(c => { c = c.trim(); if (c) rcs[c] = (rcs[c] || 0) + 1; });
+  });
+  const catColors = ['#e24b4a', '#ef9f27', '#3266ad', '#1d9e75', '#534ab7', '#d85a30'];
+  function bars(obj, el, colorArr) {
+    const sorted = Object.entries(obj).sort((a, b) => b[1] - a[1]).slice(0, 7);
+    const mx = sorted[0] ? sorted[0][1] : 1;
+    document.getElementById(el).innerHTML = sorted.map(([k, v], i) => `
+      <div class="bar-row">
+        <span class="bar-lbl" title="${k}">${k}</span>
+        <div class="bar-track"><div class="bar-fill" style="width:${Math.round(v/mx*100)}%;background:${colorArr ? colorArr[i % colorArr.length] : '#534ab7'}"></div></div>
+        <span class="bar-cnt">${v}</span>
+      </div>`).join('');
+  }
+  bars(cats, 'bcats', catColors);
+  bars(rcs, 'brc', null);
+}
+
+function renderTable(r) {
+  const ag = {};
+  r.forEach(x => {
+    if (!ag[x.a]) ag[x.a] = { name: x.a, ws: x.w, country: x.c, weeks: {}, cats: {}, weekDates: {} };
+    const e = ag[x.a];
+    if (!e.weeks[x.wk]) e.weeks[x.wk] = [];
+    e.weeks[x.wk].push(x.s);
+    if (x.ws && x.we) e.weekDates[x.wk] = { ws: x.ws, we: x.we };
+    if (x.af) x.af.split(',').forEach(c => { c = c.trim(); if (c) e.cats[c] = (e.cats[c] || 0) + 1; });
+  });
+
+  const fmt = d => { if (!d) return '—'; const p = d.split('-'); return `${p[2]}/${p[1]}/${p[0].slice(2)}`; };
+
+  const list = Object.values(ag).map(a => {
+    const wkArr = ['Week 1', 'Week 2', 'Week 3', 'Week 4'].map(w => a.weeks[w] ? +avg(a.weeks[w]).toFixed(1) : null);
+    const valid = wkArr.filter(x => x !== null);
+    const ov = valid.length ? +avg(valid).toFixed(1) : 0;
+    const top = Object.entries(a.cats).sort((x, y) => y[1] - x[1])[0];
+    return { ...a, wkArr, ov, top: top ? top[0] : '—' };
+  }).sort((a, b) => b.ov - a.ov);
+
+  document.getElementById('tbody').innerHTML = list.map((a, i) => {
+    const st = sem(a.ov);
+    const bc = st === 'g' ? '#1d9e75' : st === 'y' ? '#ba7517' : '#e24b4a';
+    const wkTds = ['Week 1', 'Week 2', 'Week 3', 'Week 4'].map((wk, j) => {
+      if (a.wkArr[j] === null) return `<td style="color:var(--text3);font-size:11px;text-align:center">—</td>`;
+      const sc = a.wkArr[j];
+      const c = sc >= 90 ? 'var(--green)' : sc >= 75 ? 'var(--yellow)' : 'var(--red)';
+      return `<td style="font-size:11px;font-weight:500;color:${c};text-align:center">${sc}%</td>`;
+    }).join('');
+
+    // Build detail: week dates + categories
+    const dateLines = ['Week 1','Week 2','Week 3','Week 4'].map(wk => {
+      if (!a.weekDates[wk]) return null;
+      const { ws, we } = a.weekDates[wk];
+      const sc = a.weeks[wk] ? +avg(a.weeks[wk]).toFixed(1) : null;
+      return `<span style="margin-right:14px"><strong>${wk}</strong> (${fmt(ws)} – ${fmt(we)}): ${sc !== null ? sc + '%' : '—'}</span>`;
+    }).filter(Boolean).join('');
+
+    const catDetail = Object.entries(a.cats).sort((x,y)=>y[1]-x[1]).map(([k,v])=>`${k} (${v})`).join(', ') || 'Sin afectaciones';
+
+    return `<tr class="dr" onclick="tog('d${i}')">
+      <td style="font-size:11px;color:var(--text3)">${i+1}</td>
+      <td style="font-weight:500">${a.name}</td>
+      <td style="font-size:11px">${a.ws.replace('BPO - ','')}</td>
+      <td style="font-size:11px">${a.country}</td>
+      ${wkTds}
+      <td><div class="sbar"><div class="bw"><div class="bf" style="width:${a.ov}%;background:${bc}"></div></div><span style="font-size:11px;font-weight:600">${a.ov}%</span></div></td>
+      <td><span class="pill ${st}">${semLbl(a.ov)}</span></td>
+      <td style="font-size:10px;color:var(--text2)">${a.top}</td>
+    </tr>
+    <tr><td colspan="11" style="padding:0">
+      <div class="detail-inner" id="d${i}">
+        <div style="margin-bottom:4px">${dateLines}</div>
+        <div><strong>Categorías afectadas:</strong> ${catDetail}</div>
+        <div style="margin-top:2px"><strong>Workspace:</strong> ${a.ws} — ${a.country}</div>
+      </div>
+    </td></tr>`;
+  }).join('');
+}
+
+function tog(id) { const el = document.getElementById(id); if (el) el.classList.toggle('open'); }
+
+loadData();
+</script>
+</body>
+</html>
