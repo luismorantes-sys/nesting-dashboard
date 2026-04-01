@@ -181,6 +181,9 @@ table.at tr.agent-row:hover td{background:var(--bg3)}
     <select id="fc" onchange="go()"><option value="all">Todos los países</option></select>
     <select id="fb" onchange="go()"><option value="all">Todos los workspaces</option></select>
     
+    <select id="fm" onchange="go()"><option value="all">Todos los meses</option></select>
+    <select id="fy" onchange="go()"><option value="all">Todos los años</option></select>
+
     <span style="font-size:11px;color:var(--text3);margin-left:8px;">Desde:</span>
     <input type="date" id="date-start" class="date-input" onchange="go()">
     <span style="font-size:11px;color:var(--text3);">Hasta:</span>
@@ -389,50 +392,103 @@ function cleanHtml(s) {
 function populateFilters() {
   const countries = [...new Set(ALL_DATA.map(x => x.c))].filter(Boolean).sort();
   const workspaces = currentWorkspace ? [] : [...new Set(ALL_DATA.map(x => x.w))].filter(Boolean).sort();
+  
   const fc = document.getElementById('fc');
   const fb = document.getElementById('fb');
+  const fm = document.getElementById('fm');
+  const fy = document.getElementById('fy');
+
   fc.innerHTML = '<option value="all">Todos los países</option>';
   fb.innerHTML = '<option value="all">Todos los workspaces</option>';
+  fm.innerHTML = '<option value="all">Todos los meses</option>';
+  fy.innerHTML = '<option value="all">Todos los años</option>';
+
   countries.forEach(c => { const o = document.createElement('option'); o.value = o.text = c; fc.appendChild(o); });
   workspaces.forEach(w => { const o = document.createElement('option'); o.value = o.text = w; fb.appendChild(o); });
   if (currentWorkspace) fb.style.display = 'none'; else fb.style.display = '';
+
+  // NUEVO: Extraer meses y años únicos de las fechas
+  const monthNames = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+  const monthsSet = new Set();
+  const yearsSet = new Set();
+
+  ALL_DATA.forEach(x => {
+    if (x.cca) {
+      const d = new Date(x.cca);
+      if (!isNaN(d.getTime())) {
+        yearsSet.add(d.getFullYear().toString());
+        monthsSet.add(d.getMonth()); // getMonth devuelve 0-11
+      }
+    }
+  });
+
+  // Agregar opciones de año
+  Array.from(yearsSet).sort().forEach(y => {
+    const o = document.createElement('option'); o.value = o.text = y; fy.appendChild(o);
+  });
+
+  // Agregar opciones de mes
+  Array.from(monthsSet).sort((a,b) => a - b).forEach(m => {
+    const o = document.createElement('option'); 
+    o.value = m; // Guardamos el número del mes (0-11)
+    o.text = monthNames[m]; // Mostramos el nombre
+    fm.appendChild(o);
+  });
 }
 
 function getFiltered() {
   const w = document.getElementById('fw').value;
   const c = document.getElementById('fc').value;
   const b = document.getElementById('fb').value;
+  const fm = document.getElementById('fm').value; // Mes
+  const fy = document.getElementById('fy').value; // Año
   const dStart = document.getElementById('date-start').value;
   const dEnd = document.getElementById('date-end').value;
 
   return ALL_DATA.filter(d => {
-    // Filtros estándar
+    // Filtros de categoría estándar
     const matchW = (w === 'all' || d.wk === w);
     const matchC = (c === 'all' || d.c === c);
     const matchB = (b === 'all' || d.w === b);
 
-    // Filtro por fecha personalizada (CONVERSATION_CREATED_AT)
-    let matchDate = true;
-    if ((dStart || dEnd) && d.cca) {
-      // Intentamos convertir la fecha del CSV a un objeto Date real de JS
-      const convDate = new Date(d.cca);
-      
-      // Comprobamos si es una fecha válida antes de filtrar
-      if (!isNaN(convDate.getTime())) {
-        if (dStart) {
-          // Ajustamos la hora al inicio del día para que incluya ese día
-          const startDate = new Date(dStart + 'T00:00:00');
-          if (convDate < startDate) matchDate = false;
+    // Variables de fecha (por defecto verdaderas, se vuelven falsas si no cumplen un filtro activo)
+    let matchRange = true;
+    let matchMonth = true;
+    let matchYear = true;
+
+    // Solo revisamos fechas si hay algún filtro de tiempo activo
+    const isTimeFilterActive = (dStart || dEnd || fm !== 'all' || fy !== 'all');
+
+    if (isTimeFilterActive) {
+      if (d.cca) {
+        const convDate = new Date(d.cca);
+        
+        if (!isNaN(convDate.getTime())) {
+          // Evaluar rango de inicio y fin
+          if (dStart) {
+            const startDate = new Date(dStart + 'T00:00:00');
+            if (convDate < startDate) matchRange = false;
+          }
+          if (dEnd) {
+            const endDate = new Date(dEnd + 'T23:59:59');
+            if (convDate > endDate) matchRange = false;
+          }
+
+          // Evaluar Mes y Año
+          if (fm !== 'all' && convDate.getMonth().toString() !== fm) matchMonth = false;
+          if (fy !== 'all' && convDate.getFullYear().toString() !== fy) matchYear = false;
+          
+        } else {
+          // Si la fecha es inválida pero hay un filtro activo, la omitimos
+          matchRange = false; 
         }
-        if (dEnd) {
-          // Ajustamos la hora al final del día para abarcarlo completo
-          const endDate = new Date(dEnd + 'T23:59:59');
-          if (convDate > endDate) matchDate = false;
-        }
+      } else {
+        // Si no tiene fecha (cca vacío) pero hay un filtro activo, la omitimos
+        matchRange = false;
       }
     }
 
-    return matchW && matchC && matchB && matchDate;
+    return matchW && matchC && matchB && matchRange && matchMonth && matchYear;
   });
 }
 
