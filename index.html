@@ -178,6 +178,12 @@ table.at tr.agent-row:hover td{background:var(--bg3)}
     </select>
     <select id="fc" onchange="go()"><option value="all">Todos los países</option></select>
     <select id="fb" onchange="go()"><option value="all">Todos los workspaces</option></select>
+    
+    <span style="font-size:11px;color:var(--text3);margin-left:8px;">Desde:</span>
+    <input type="date" id="date-start" class="date-input" onchange="go()">
+    <span style="font-size:11px;color:var(--text3);">Hasta:</span>
+    <input type="date" id="date-end" class="date-input" onchange="go()">
+
     <span class="week-range-tag" id="wk-range">—</span>
     <button class="btn-refresh" onclick="loadData()">↻ Actualizar datos</button>
   </div>
