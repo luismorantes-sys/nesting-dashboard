@@ -51,7 +51,9 @@ select:focus{border-color:var(--green-main)}
 .week-range-tag{font-size:11px;color:var(--text3);padding:5px 10px;background:var(--bg3);border-radius:var(--radius);border:0.5px solid var(--border)}
 .btn-refresh{font-size:11px;padding:5px 10px;border:0.5px solid var(--border2);border-radius:var(--radius);background:var(--bg2);cursor:pointer;color:var(--text2)}
 .btn-refresh:hover{background:var(--bg3)}
-
+.date-input { font-size:12px; padding:4px 8px; border:0.5px solid var(--border2); border-radius:var(--radius); color:var(--text); outline:none; background:var(--bg2); cursor:pointer; }
+.date-input:focus { border-color:var(--green-main); }
+  
 /* ── CONTENT ── */
 .content{padding:20px 24px;max-width:1200px;margin:0 auto}
 .section-label{font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:8px}
@@ -288,8 +290,8 @@ async function loadData() {
 
   try {
     // Use direct export with explicit range — bypasses all row limits
-    // Format: /export?format=csv&range=A:Z fetches ALL rows for given columns
-    const COLS = 'A:Y'; // 25 columns
+    // Cambiamos a A:X ya que ahora son 24 columnas (A hasta X)
+    const COLS = 'A:X'; 
     const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&range=${COLS}`;
     const resp = await fetch(url);
     if (!resp.ok) throw new Error('HTTP ' + resp.status);
@@ -303,28 +305,31 @@ async function loadData() {
         return name && name !== 'bot';
       })
       .map(r => ({
+        // Nuevas columnas alineadas a tu lista:
         a:   r.AGENT_NAME || '',
         w:   r.WORKSPACE_NAME || '',
         c:   r.COUNTRY_NAME || '',
         wk:  r.WEEK_QA || '',
+        cca: r.CONVERSATION_CREATED_AT || '', // NUEVO
+        ws:  (r.WEEK_START || '').substring(0, 10),
+        we:  (r.WEEK_END || '').substring(0, 10),
         s:   Math.round(parseFloat(r.FINAL_REVIEW_SCORE || 0) * 100 * 10) / 10,
         af:  r.AFFECTED_CATEGORIES || '',
         rc:  r.ROOT_CAUSES || '',
         cf:  (r.HAD_CRITICAL_FAIL || '').toLowerCase() === 'true',
         ccf: parseInt(r.COUNT_CRITICAL_FAILS || 0),
-        cgf: parseInt(r.COUNT_GENERAL_FAILS || 0),
         cm:  cleanHtml(r.COMMENT || ''),
         t:   r.ZENDESK_TICKET_ID || '',
         url: r.EXTERNAL_URL || '',
-        ws:  (r.WEEK_START || '').substring(0, 10),
-        we:  (r.WEEK_END || '').substring(0, 10),
         hi:  parseInt(r.HIGH || 0),
         av:  parseInt(r.AVERAGE || 0),
         lo:  parseInt(r.LOW || 0),
         disp: parseInt(r.IS_DISPUTED || 0),
+        // SCORECARD_NAME ya se usa en el primer filter()
         st:  r.STAKEHOLDER || '',
         prod: r.PRODUCT || '',
-        aud: r.AUDIT_STATUS || '',
+        vc:  r.VIA_CHANNEL || '',       // NUEVO
+        dc:  r.DISPOSITION_CODE || ''   // NUEVO
       }));
 
     if (currentWorkspace) {
@@ -397,11 +402,38 @@ function getFiltered() {
   const w = document.getElementById('fw').value;
   const c = document.getElementById('fc').value;
   const b = document.getElementById('fb').value;
-  return ALL_DATA.filter(d =>
-    (w === 'all' || d.wk === w) &&
-    (c === 'all' || d.c === c) &&
-    (b === 'all' || d.w === b)
-  );
+  const dStart = document.getElementById('date-start').value;
+  const dEnd = document.getElementById('date-end').value;
+
+  return ALL_DATA.filter(d => {
+    // Filtros estándar
+    const matchW = (w === 'all' || d.wk === w);
+    const matchC = (c === 'all' || d.c === c);
+    const matchB = (b === 'all' || d.w === b);
+
+    // Filtro por fecha personalizada (CONVERSATION_CREATED_AT)
+    let matchDate = true;
+    if ((dStart || dEnd) && d.cca) {
+      // Intentamos convertir la fecha del CSV a un objeto Date real de JS
+      const convDate = new Date(d.cca);
+      
+      // Comprobamos si es una fecha válida antes de filtrar
+      if (!isNaN(convDate.getTime())) {
+        if (dStart) {
+          // Ajustamos la hora al inicio del día para que incluya ese día
+          const startDate = new Date(dStart + 'T00:00:00');
+          if (convDate < startDate) matchDate = false;
+        }
+        if (dEnd) {
+          // Ajustamos la hora al final del día para abarcarlo completo
+          const endDate = new Date(dEnd + 'T23:59:59');
+          if (convDate > endDate) matchDate = false;
+        }
+      }
+    }
+
+    return matchW && matchC && matchB && matchDate;
+  });
 }
 
 // ══════════════════════════════════════════
@@ -604,7 +636,6 @@ function buildAgentDetail(a, idx) {
     const rcTags = t.rc ? t.rc.split(',').map(c=>`<span class="tag">${c.trim()}</span>`).join('') : '';
     const cfBadge = t.cf ? `<span class="ticket-cf">⚠ Critical Fail (${t.ccf})</span>` : '';
     const dispBadge = t.disp ? `<span class="ticket-cf" style="background:var(--yellow-bg);color:var(--yellow-text)">Disputado</span>` : '';
-    const audBadge = t.aud && t.aud !== 'No Changes' ? `<span class="tag">${t.aud}</span>` : '';
     const sc = t.s;
     return `
       <div class="ticket-card">
@@ -617,7 +648,7 @@ function buildAgentDetail(a, idx) {
         </div>
         ${t.cm ? `<div class="ticket-comment">${t.cm}</div>` : ''}
         <div class="ticket-tags">
-          ${afTags}${rcTags}${audBadge}
+          ${afTags}${rcTags}
           ${t.st ? `<span class="tag green">${t.st}</span>` : ''}
           ${t.prod ? `<span class="tag green">${t.prod}</span>` : ''}
         </div>
