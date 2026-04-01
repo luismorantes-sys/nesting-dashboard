@@ -180,6 +180,8 @@ table.at tr.agent-row:hover td{background:var(--bg3)}
     </select>
     <select id="fc" onchange="go()"><option value="all">Todos los países</option></select>
     <select id="fb" onchange="go()"><option value="all">Todos los workspaces</option></select>
+
+    <select id="fs" onchange="go()"><option value="all">Todos los stakeholders</option></select> 
     
     <select id="fm" onchange="go()"><option value="all">Todos los meses</option></select>
     <select id="fy" onchange="go()"><option value="all">Todos los años</option></select>
@@ -393,21 +395,30 @@ function populateFilters() {
   const countries = [...new Set(ALL_DATA.map(x => x.c))].filter(Boolean).sort();
   const workspaces = currentWorkspace ? [] : [...new Set(ALL_DATA.map(x => x.w))].filter(Boolean).sort();
   
+  // NUEVO: Extraer stakeholders únicos
+  const stakeholders = [...new Set(ALL_DATA.map(x => x.st))].filter(Boolean).sort();
+  
   const fc = document.getElementById('fc');
   const fb = document.getElementById('fb');
   const fm = document.getElementById('fm');
   const fy = document.getElementById('fy');
+  const fs = document.getElementById('fs'); // NUEVO: Elemento select de stakeholder
 
   fc.innerHTML = '<option value="all">Todos los países</option>';
   fb.innerHTML = '<option value="all">Todos los workspaces</option>';
   fm.innerHTML = '<option value="all">Todos los meses</option>';
   fy.innerHTML = '<option value="all">Todos los años</option>';
+  fs.innerHTML = '<option value="all">Todos los stakeholders</option>'; // NUEVO
 
   countries.forEach(c => { const o = document.createElement('option'); o.value = o.text = c; fc.appendChild(o); });
   workspaces.forEach(w => { const o = document.createElement('option'); o.value = o.text = w; fb.appendChild(o); });
+  
+  // NUEVO: Agregar opciones de stakeholder
+  stakeholders.forEach(s => { const o = document.createElement('option'); o.value = o.text = s; fs.appendChild(o); });
+  
   if (currentWorkspace) fb.style.display = 'none'; else fb.style.display = '';
 
-  // NUEVO: Extraer meses y años únicos de las fechas
+  // (Manten el resto de la lógica de extraer meses y años únicos que ya tienes aquí abajo)
   const monthNames = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
   const monthsSet = new Set();
   const yearsSet = new Set();
@@ -417,21 +428,19 @@ function populateFilters() {
       const d = new Date(x.cca);
       if (!isNaN(d.getTime())) {
         yearsSet.add(d.getFullYear().toString());
-        monthsSet.add(d.getMonth()); // getMonth devuelve 0-11
+        monthsSet.add(d.getMonth());
       }
     }
   });
 
-  // Agregar opciones de año
   Array.from(yearsSet).sort().forEach(y => {
     const o = document.createElement('option'); o.value = o.text = y; fy.appendChild(o);
   });
 
-  // Agregar opciones de mes
   Array.from(monthsSet).sort((a,b) => a - b).forEach(m => {
     const o = document.createElement('option'); 
-    o.value = m; // Guardamos el número del mes (0-11)
-    o.text = monthNames[m]; // Mostramos el nombre
+    o.value = m; 
+    o.text = monthNames[m]; 
     fm.appendChild(o);
   });
 }
@@ -440,8 +449,9 @@ function getFiltered() {
   const w = document.getElementById('fw').value;
   const c = document.getElementById('fc').value;
   const b = document.getElementById('fb').value;
-  const fm = document.getElementById('fm').value; // Mes
-  const fy = document.getElementById('fy').value; // Año
+  const s = document.getElementById('fs').value; // NUEVO: Obtener valor del stakeholder
+  const fm = document.getElementById('fm').value; 
+  const fy = document.getElementById('fy').value; 
   const dStart = document.getElementById('date-start').value;
   const dEnd = document.getElementById('date-end').value;
 
@@ -450,13 +460,13 @@ function getFiltered() {
     const matchW = (w === 'all' || d.wk === w);
     const matchC = (c === 'all' || d.c === c);
     const matchB = (b === 'all' || d.w === b);
+    const matchS = (s === 'all' || d.st === s); // NUEVO: Condición del stakeholder
 
-    // Variables de fecha (por defecto verdaderas, se vuelven falsas si no cumplen un filtro activo)
+    // Variables de fecha
     let matchRange = true;
     let matchMonth = true;
     let matchYear = true;
 
-    // Solo revisamos fechas si hay algún filtro de tiempo activo
     const isTimeFilterActive = (dStart || dEnd || fm !== 'all' || fy !== 'all');
 
     if (isTimeFilterActive) {
@@ -464,7 +474,6 @@ function getFiltered() {
         const convDate = new Date(d.cca);
         
         if (!isNaN(convDate.getTime())) {
-          // Evaluar rango de inicio y fin
           if (dStart) {
             const startDate = new Date(dStart + 'T00:00:00');
             if (convDate < startDate) matchRange = false;
@@ -474,21 +483,19 @@ function getFiltered() {
             if (convDate > endDate) matchRange = false;
           }
 
-          // Evaluar Mes y Año
           if (fm !== 'all' && convDate.getMonth().toString() !== fm) matchMonth = false;
           if (fy !== 'all' && convDate.getFullYear().toString() !== fy) matchYear = false;
           
         } else {
-          // Si la fecha es inválida pero hay un filtro activo, la omitimos
           matchRange = false; 
         }
       } else {
-        // Si no tiene fecha (cca vacío) pero hay un filtro activo, la omitimos
         matchRange = false;
       }
     }
 
-    return matchW && matchC && matchB && matchRange && matchMonth && matchYear;
+    // NUEVO: Retornar incluyendo matchS
+    return matchW && matchC && matchB && matchS && matchRange && matchMonth && matchYear;
   });
 }
 
