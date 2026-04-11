@@ -581,23 +581,23 @@ function renderTrend() {
       labels: chartLabels, 
       datasets: [
         {
-          type: 'line',
+          type: 'bar', // Cambiado a barras
           label: 'Score Promedio',
           data: scores,
-          borderColor: '#f1c40f', // Amarillo de la imagen
-          backgroundColor: '#f1c40f',
-          tension: 0.3,
-          yAxisID: 'y',
-          borderWidth: 2, 
-          pointRadius: 4, 
-          spanGaps: true
+          backgroundColor: 'rgba(0,124,59,0.95)', // Barras verdes
+          borderRadius: 2,
+          yAxisID: 'y'
         },
         {
-          type: 'bar',
+          type: 'line', 
           label: 'Total Revisiones',
           data: evals,
-          backgroundColor: 'rgba(0,124,59,0.95)', // Verde de la imagen
-          borderRadius: 2,
+          borderColor: '#f1c40f', 
+          backgroundColor: '#f1c40f',
+          tension: 0.3,
+          borderWidth: 2, 
+          pointRadius: 4, 
+          spanGaps: true,
           yAxisID: 'y1'
         }
       ]
