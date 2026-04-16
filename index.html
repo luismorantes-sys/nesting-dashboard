@@ -696,7 +696,6 @@ function renderAgents() {
     if (!ag[x.a]) ag[x.a] = { name:x.a, ws:x.w, country:x.c, weeks:{}, cats:{}, tickets:[] };
     const e = ag[x.a];
     
-    // Guardar los scores basados en la nueva etiqueta de semana (wl)
     if (x.wl) {
       if (!e.weeks[x.wl]) e.weeks[x.wl] = [];
       e.weeks[x.wl].push(x.s);
@@ -708,10 +707,12 @@ function renderAgents() {
 
   // 3. Formatear para el renderizado
   const list = Object.values(ag).map(a => {
-    // Generar el array de scores específicamente para las últimas 6 semanas
     const wArr = window.LAST_6_WEEKS.map(w => a.weeks[w] ? avg(a.weeks[w]) : null);
-    const valid = wArr.filter(x => x !== null);
-    const ov = valid.length ? avg(valid) : 0;
+    
+    // CORRECCIÓN: Calcular el promedio real sumando todos los tickets
+    const scoresTotales = a.tickets.map(t => t.s);
+    const ov = scoresTotales.length ? avg(scoresTotales) : 0;
+    
     const top = Object.entries(a.cats).sort((x,y)=>y[1]-x[1])[0];
     const totalCF = a.tickets.filter(t=>t.cf).length;
     return {...a, wArr, ov, top:top?top[0]:'—', totalCF, totalEvals:a.tickets.length};
@@ -722,7 +723,6 @@ function renderAgents() {
     const st = sem(a.ov);
     const bc = scoreColor(a.ov);
     
-    // Crear las celdas de las semanas dinámicas
     const wkTds = a.wArr.map(sc => sc===null
       ? `<td style="color:var(--text3);text-align:center;font-size:11px">—</td>`
       : `<td style="font-size:11px;font-weight:600;color:${scoreColor(sc)};text-align:center">${sc.toFixed(1)}%</td>`
@@ -746,7 +746,6 @@ function renderAgents() {
       </tr>`;
   }).join('');
 }
-
 function toggleAgent(i) {
   const row = document.getElementById(`detail-row-${i}`);
   row.classList.toggle('open');
@@ -757,13 +756,22 @@ function toggleAgent(i) {
 // ══════════════════════════════════════════
 function buildAgentDetail(a, idx) {
   // Resumen dinámico de las semanas
-  const weekSummary = window.LAST_6_WEEKS.map(wk => {
+  let weekSummary = window.LAST_6_WEEKS.map(wk => {
     const sc = a.weeks[wk] ? avg(a.weeks[wk]) : null;
     if (sc === null) return null;
     const evals = a.weeks[wk].length;
     let [yy,mm,dd] = wk.split('-');
     return `<span style="margin-right:16px;font-size:11px"><strong style="color:var(--green-main)">${dd}/${mm}</strong>: <strong style="color:${scoreColor(sc)}">${sc.toFixed(1)}%</strong> <span style="color:var(--text3)">(${evals} eval${evals!==1?'s':''})</span></span>`;
   }).filter(Boolean).join('');
+
+  // CORRECCIÓN: Añadir etiqueta de "Sin fecha" si los números no cuadran
+  let evalsSemanales = 0;
+  window.LAST_6_WEEKS.forEach(wk => { if(a.weeks[wk]) evalsSemanales += a.weeks[wk].length; });
+  
+  if (a.totalEvals > evalsSemanales) {
+    const diff = a.totalEvals - evalsSemanales;
+    weekSummary += `<span style="margin-right:16px;font-size:11px"><strong style="color:var(--text2)">Otras fechas / Sin fecha:</strong> <span style="color:var(--text3)">(${diff} eval${diff!==1?'s':''})</span></span>`;
+  }
 
   const tickets = [...a.tickets].sort((x,y) => y.s - x.s);
 
@@ -773,7 +781,7 @@ function buildAgentDetail(a, idx) {
     const cfBadge = t.cf ? `<span class="ticket-cf">⚠ Critical Fail (${t.ccf})</span>` : '';
     const dispBadge = t.disp ? `<span class="ticket-cf" style="background:var(--yellow-bg);color:var(--yellow-text)">Disputado</span>` : '';
     const sc = t.s;
-    // Formatear fecha para el ticket
+    
     let tDate = "—";
     if (t.cca) {
       let stringISO = t.cca.trim().replace(" ", "T");
