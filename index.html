@@ -301,8 +301,8 @@ async function loadData() {
       })
       .map(r => {
         // Cálculo dinámico de Lunes y Mes
-        let stringISO = (r.CONVERSATION_CREATED_AT || '').trim().replace(" ", "T");
-        let d = new Date(stringISO);
+        let safeDate = (r.CONVERSATION_CREATED_AT || '').trim().replace(/-/g, '/');
+        let d = new Date(safeDate);
         let wl = null, ml = null;
         if (!isNaN(d.getTime())) {
           let day = d.getDay();
@@ -471,7 +471,7 @@ function getFiltered() {
 
     if (isTimeFilterActive) {
       if (d.cca) {
-        const convDate = new Date(d.cca);
+        const convDate = new Date(d.cca.replace(/-/g, '/'));
         if (!isNaN(convDate.getTime())) {
           if (dStart) {
             const startDate = new Date(dStart + 'T00:00:00');
@@ -784,8 +784,8 @@ function buildAgentDetail(a, idx) {
     
     let tDate = "—";
     if (t.cca) {
-      let stringISO = t.cca.trim().replace(" ", "T");
-      let d = new Date(stringISO);
+      let safeDate = t.cca.trim().replace(/-/g, '/');
+      let d = new Date(safeDate);
       if (!isNaN(d.getTime())) tDate = `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`;
     }
 
