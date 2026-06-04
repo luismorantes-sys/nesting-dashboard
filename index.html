@@ -85,10 +85,10 @@ table.at tr.agent-row{cursor:pointer;transition:background .1s}
 table.at tr.agent-row:hover td{background:var(--bg3)}
 
 /* ── AGENT DETAIL ── */
-.agent-detail{display:none;background:var(--bg3);border-bottom:0.5px solid var(--border2)}
+.agent-detail{display:none;background:var(--bg3);border-bottom:0.5px solid var(--border2);overflow:visible}
 .agent-detail.open{display:table-row}
-.agent-detail td{padding:0}
-.detail-inner{padding:16px 20px}
+.agent-detail td{padding:0;overflow:visible}
+.detail-inner{padding:16px 20px;overflow:visible}
 .detail-tabs{display:flex;gap:2px;margin-bottom:14px;border-bottom:0.5px solid var(--border)}
 .detail-tab{font-size:11px;font-weight:500;padding:7px 14px;cursor:pointer;color:var(--text3);border-bottom:2px solid transparent;margin-bottom:-0.5px}
 .detail-tab.active{color:var(--green-main);border-bottom-color:var(--green-main)}
@@ -96,10 +96,9 @@ table.at tr.agent-row:hover td{background:var(--bg3)}
 .tab-panel.active{display:block}
 
 /* Ticket cards */
-.ticket-grid{display:flex;flex-direction:column;gap:10px;max-height:480px;overflow-y:auto;overflow-x:hidden;padding-right:4px}
-.ticket-card{overflow:hidden}
-.ticket-card{background:var(--bg2);border:0.5px solid var(--border);border-radius:var(--radius);padding:12px 14px}
-.ticket-header{display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap}
+.ticket-grid{display:flex;flex-direction:column;gap:10px;max-height:560px;overflow-y:auto;overflow-x:hidden;padding-right:6px}
+.ticket-card{background:var(--bg2);border:0.5px solid var(--border);border-radius:var(--radius);padding:12px 14px;min-height:0;width:100%}
+.ticket-header{display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap;min-width:0}
 .ticket-id{font-size:11px;font-weight:600;color:var(--green-main)}
 .ticket-week{font-size:10px;background:var(--bg3);padding:2px 7px;border-radius:10px;color:var(--text2)}
 .ticket-score{font-size:12px;font-weight:700}
