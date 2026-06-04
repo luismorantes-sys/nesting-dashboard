@@ -103,7 +103,7 @@ table.at tr.agent-row:hover td{background:var(--bg3)}
 .ticket-week{font-size:10px;background:var(--bg3);padding:2px 7px;border-radius:10px;color:var(--text2)}
 .ticket-score{font-size:12px;font-weight:700}
 .ticket-cf{font-size:10px;background:var(--red-bg);color:var(--red-text);padding:2px 7px;border-radius:10px;font-weight:500}
-.ticket-comment{font-size:11px;color:var(--text2);line-height:1.6;margin-bottom:8px;word-break:break-word;overflow-wrap:break-word;white-space:pre-wrap}
+.ticket-comment{font-size:11px;color:var(--text2);line-height:1.6;margin-bottom:8px;word-break:break-word;overflow-wrap:break-word;white-space:normal}
 .ticket-tags{display:flex;flex-wrap:wrap;gap:4px}
 .tag{font-size:10px;padding:2px 7px;border-radius:10px;border:0.5px solid var(--border2);color:var(--text2);background:var(--bg)}
 .tag.red{background:var(--red-bg);color:var(--red-text);border-color:rgba(192,57,43,0.2)}
@@ -369,7 +369,16 @@ function splitLine(line) {
 }
 
 function cleanHtml(s) {
-  return s.replace(/&nbsp;/g,' ').replace(/<[^>]+>/g,'').replace(/\s+/g,' ').trim().substring(0, 300);
+  return s
+    .replace(/&nbsp;/g, ' ')
+    .replace(/<[^>]+>/g, '')           // strip HTML tags
+    .replace(/[\u{1F000}-\u{1FFFF}]/gu, '') // strip emoji
+    .replace(/[0-9]\uFE0F\u20E3/g, '') // strip keycap emojis like 1️⃣
+    .replace(/\u00a0/g, ' ')           // non-breaking spaces
+    .replace(/[\r\n]+/g, ' ')          // newlines → spaces
+    .replace(/\s+/g, ' ')
+    .trim()
+    .substring(0, 300);
 }
 
 // ══════════════════════════════════════════
