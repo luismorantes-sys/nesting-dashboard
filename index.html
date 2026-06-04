@@ -391,7 +391,7 @@ function splitLine(line) {
 }
 
 function cleanHtml(s) {
-  return s.replace(/&nbsp;/g,' ').replace(/<[^>]+>/g,'').replace(/\s+/g,' ').trim().substring(0, 300);
+  return s.replace(/&nbsp;/g,' ').replace(/<[^>]+>/g,'').replace(/\s+/g,' ').trim();
 }
 
 // ══════════════════════════════════════════
